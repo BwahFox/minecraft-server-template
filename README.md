@@ -2,6 +2,10 @@
 
 A self-hosted Minecraft Java server stack with automated backups, a server management TUI, and a WireGuard-based remote access setup. Built for Fabric, but adaptable to other server software.
 
+# Warning: This sofware is under active development. Things may change or break at anytime. I am not responsible for your servers breaking, make sure you have backups. (This software is very stable, but still, you never know.)
+
+# Note: I am currently preparing a rather sizeable update for this project. If you make something that relies on this, know that things may change soon.
+
 ## What's included
 
 | File | Description |
