@@ -1,0 +1,22 @@
+[Unit]
+Description=Minecraft Fabric Server
+After=network.target wg-quick@wg0.service
+Wants=wg-quick@wg0.service
+
+[Service]
+Type=forking
+User=user
+WorkingDirectory=/home/user/minecraft
+
+# Start server in a detached tmux session
+ExecStart=/usr/bin/tmux new-session -d -s minecraft '/home/user/java/bin/java -jar -Xmx8192M -Xms8192M /home/user/minecraft/server.jar nogui'
+
+# Gracefully tell the server to stop, then wait for tmux session to exit
+ExecStop=/usr/bin/tmux send-keys -t minecraft "stop" Enter
+TimeoutStopSec=60
+
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
