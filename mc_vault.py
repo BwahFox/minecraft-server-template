@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MC Vault v0.3.4 — Cross-platform GUI/TUI tool for backing up and restoring
+MC Vault v0.4.1 — Cross-platform GUI/TUI tool for backing up and restoring
 Minecraft Java worlds for PrismLauncher instances.
 
 Single-file architecture. See DESIGN.md for full specification.
@@ -39,7 +39,7 @@ import tkinter as tk
 from tkinter import ttk
 
 APP_NAME = "MC Vault"
-APP_VERSION = "0.3.7"
+APP_VERSION = "0.4.1"
 CONFIG_VERSION = 1
 
 MCVAULT_TEMP_DIR = Path.home() / ".temp" / "mc_vault"
@@ -2552,13 +2552,11 @@ def headless_backup(
             # rclone --progress byte-transfer line (may be embedded after \r):
             # "Transferred: 2.3 GiB / 4.9 GiB, 47%, 3.6 MiB/s, ETA 2m30s"
             m = re.search(
-                r'Transferred:\s+[\d.]+\s*\S+\s*/\s*[\d.]+\s*\S+,\s*(\d+)%,\s*([\d.]+\s*[A-Z]i?B/s)',
+                r'Transferred:\s+[\d.]+\s*\S+\s*/\s*[\d.]+\s*[^\s,]+,\s*(\d+)%,\s*([\d.]+\s*[A-Z]i?B/s)',
                 msg,
             )
             if m:
                 _write_status(f"§e⚙ Backup: uploading {m.group(1)}% §7({m.group(2)})")
-            else:
-                _write_status("§e⚙ Backup: uploading to cloud...")
         elif "copying to local" in lo:
             _write_status("§e⚙ Backup: copying locally...")
         elif "uploading" in lo or "upload" in lo:
