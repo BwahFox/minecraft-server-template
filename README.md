@@ -43,7 +43,7 @@ Home server (Linux, systemd)
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/youruser/minecraft-server-template
+git clone https://github.com/BwahFox/minecraft-server-template
 cd minecraft-server-template
 
 # 2. Run the setup script — it handles everything else
