@@ -2,7 +2,7 @@
 # backup_nightly.sh — Nightly Minecraft backup orchestrator.
 #
 # Schedule with cron:
-#   50 23 * * * /home/user/minecraft/backup_nightly.sh
+#   50 23 * * * /home/user/minecraft/servermanager/backup_nightly.sh
 #
 # What it does:
 #   23:50 — warn players: 10 minutes
@@ -14,14 +14,19 @@
 set -euo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
-MCVAULT="$HOME/minecraft/mc_vault.py"
-STATUS_SERVER="$HOME/minecraft/mc_status_server.py"
-LOG="$HOME/minecraft/backup.log"
+MCVAULT="$HOME/minecraft/servermanager/mc_vault.py"
+STATUS_SERVER="$HOME/minecraft/servermanager/mc_status_server.py"
+LOG="$HOME/minecraft/servermanager/backup.log"
+ADMIN_LOG="$HOME/minecraft/servermanager/admin.log"
 TMUX_SESSION="minecraft"
 # ─────────────────────────────────────────────────────────────────────────────
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"
+}
+
+admin_log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [cron] $*" >> "$ADMIN_LOG"
 }
 
 mc_cmd() {
@@ -36,6 +41,7 @@ server_running() {
 
 # ── Warning phase ─────────────────────────────────────────────────────────────
 log "Backup scheduler started."
+admin_log "nightly backup started"
 
 if server_running; then
     mc_cmd "say §eServer will go down for backup in §b10 minutes§e."
@@ -61,9 +67,7 @@ sleep 60    # wait 1 minute → 00:00
 # ── Shutdown ──────────────────────────────────────────────────────────────────
 log "Stopping Minecraft server..."
 if server_running; then
-    mc_cmd "say §cServer going down for backup now. See you soon!"
-    mc_cmd "save-all"
-    sleep 10
+    mc_cmd "kick @a Server going down for backup now. See you soon!"
     mc_cmd "stop"
     # Wait for the tmux session to exit (server stopped)
     for i in $(seq 1 60); do
@@ -80,7 +84,8 @@ log "Server stopped."
 # ── Status server ─────────────────────────────────────────────────────────────
 log "Starting status server..."
 python3 "$STATUS_SERVER" \
-    --motd "§e⚙ Backup in progress §7— §aback soon!" &
+    --motd "§e⚙ Backup in progress §7— §aback soon!" \
+    --status-file /tmp/mcvault_status &
 STATUS_PID=$!
 log "Status server PID: $STATUS_PID"
 
@@ -93,8 +98,10 @@ set -e
 
 if [ "$BACKUP_EXIT" -eq 0 ]; then
     log "Backup completed successfully."
+    admin_log "nightly backup complete"
 else
     log "ERROR: Backup failed (exit code $BACKUP_EXIT). Server will still restart."
+    admin_log "nightly backup FAILED (exit $BACKUP_EXIT)"
 fi
 
 # ── Tear down status server ───────────────────────────────────────────────────

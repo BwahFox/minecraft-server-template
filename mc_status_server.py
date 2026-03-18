@@ -6,6 +6,7 @@ without running Fabric/Java at all.
 
 Usage:
     python3 mc_status_server.py [--host HOST] [--port PORT] [--motd "Your message"]
+                                [--status-file PATH]
 """
 
 import argparse
@@ -13,6 +14,8 @@ import json
 import socket
 import struct
 import threading
+from pathlib import Path
+from typing import Optional
 
 
 DEFAULT_MOTD  = "§e⚙ Backup in progress §7— §aback soon!"
@@ -65,6 +68,18 @@ def _send_packet(sock: socket.socket, packet_id: int, payload: bytes) -> None:
     sock.sendall(_varint(len(data)) + data)
 
 
+def _resolve_motd(motd: str, status_file: Optional[str]) -> str:
+    """Return current MOTD — from status file if available, else the default."""
+    if status_file:
+        try:
+            text = Path(status_file).read_text(encoding="utf-8").strip()
+            if text:
+                return text
+        except OSError:
+            pass
+    return motd
+
+
 def _build_status_response(motd: str) -> bytes:
     response = {
         "version": {"name": "Backup", "protocol": PROTOCOL_VERSION},
@@ -76,9 +91,10 @@ def _build_status_response(motd: str) -> bytes:
     return _varint(len(raw)) + raw
 
 
-def _handle_client(conn: socket.socket, motd: str) -> None:
+def _handle_client(conn: socket.socket, motd: str, status_file: Optional[str] = None) -> None:
     try:
         conn.settimeout(5.0)
+        current_motd = _resolve_motd(motd, status_file)
 
         # Read handshake packet
         _length  = _read_varint(conn)
@@ -92,7 +108,7 @@ def _handle_client(conn: socket.socket, motd: str) -> None:
 
         if next_state != 1:
             # Login attempt — send a disconnect with a message
-            disconnect_msg = json.dumps({"text": motd})
+            disconnect_msg = json.dumps({"text": current_motd})
             encoded = disconnect_msg.encode("utf-8")
             payload = _varint(len(encoded)) + encoded
             _send_packet(conn, 0x00, payload)
@@ -103,7 +119,7 @@ def _handle_client(conn: socket.socket, motd: str) -> None:
         _pkt_id = _read_varint(conn)
 
         # Send status response
-        _send_packet(conn, 0x00, _build_status_response(motd))
+        _send_packet(conn, 0x00, _build_status_response(current_motd))
 
         # Read ping packet and echo it back
         try:
@@ -123,19 +139,22 @@ def _handle_client(conn: socket.socket, motd: str) -> None:
             pass
 
 
-def run_status_server(host: str, port: int, motd: str) -> None:
+def run_status_server(host: str, port: int, motd: str, status_file: Optional[str] = None) -> None:
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind((host, port))
     srv.listen(8)
     print(f"[mc_status_server] Listening on {host}:{port}", flush=True)
-    print(f"[mc_status_server] MOTD: {motd}", flush=True)
+    if status_file:
+        print(f"[mc_status_server] Status file: {status_file}", flush=True)
+    else:
+        print(f"[mc_status_server] MOTD: {motd}", flush=True)
 
     try:
         while True:
             conn, _ = srv.accept()
             threading.Thread(
-                target=_handle_client, args=(conn, motd), daemon=True
+                target=_handle_client, args=(conn, motd, status_file), daemon=True
             ).start()
     except KeyboardInterrupt:
         pass
@@ -149,5 +168,7 @@ if __name__ == "__main__":
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--motd", default=DEFAULT_MOTD)
+    parser.add_argument("--status-file", metavar="PATH",
+                        help="Path to a file whose contents are used as the live MOTD")
     args = parser.parse_args()
-    run_status_server(args.host, args.port, args.motd)
+    run_status_server(args.host, args.port, args.motd, args.status_file)

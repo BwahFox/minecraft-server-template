@@ -6,10 +6,10 @@ Wants=wg-quick@wg0.service
 [Service]
 Type=forking
 User=user
-WorkingDirectory=/home/user/minecraft
+WorkingDirectory=/home/user/minecraft/server
 
 # Start server in a detached tmux session
-ExecStart=/usr/bin/tmux new-session -d -s minecraft '/home/user/java/bin/java -jar -Xmx8192M -Xms8192M /home/user/minecraft/server.jar nogui'
+ExecStart=/usr/bin/tmux new-session -d -s minecraft '/home/user/minecraft/java/bin/java -Xmx8192M -Xms8192M -jar /home/user/minecraft/server/server.jar nogui'
 
 # Gracefully tell the server to stop, then wait for tmux session to exit
 ExecStop=/usr/bin/tmux send-keys -t minecraft "stop" Enter
